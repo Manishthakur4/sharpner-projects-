@@ -1,50 +1,50 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Message Board</title>
-</head>
-<body>
-    <div id="messageList">
-    </div>
-  <form id="messageForm">
-    <textarea id="messageInput" placeholder="Type your message"></textarea>
-    <button type="button" onclick="addMessage()">Add Message</button>
-  </form>
+const http = require('http');
+const fs = require('fs');
 
-<script>
-    function addMessage() {
-    const messageInput = document.getElementById('messageInput');
-    const message = messageInput.value.trim();
-  
-    if (message !== '') {
-      localStorage.setItem('latestMessage', message);
-  
-      messageInput.value = '';
-  
-      displayMessages();
-    }
-  }
-  
-  function displayMessages() {
-    const messageList = document.getElementById('messageList');
-    messageList.innerHTML = '';
-  
-    const latestMessage = localStorage.getItem('latestMessage');
-  
-    if (latestMessage) {
-      const messageItem = document.createElement('div');
-      
-      console.log(latestMessage);
-      messageItem.textContent = latestMessage;
-      messageList.appendChild(messageItem);
-    }
-  }
-  
-  displayMessages();
-  
-</script>
+const server = http.createServer((req, res) => {
+  const url = req.url;
+  const method = req.method;
 
-</body>
-</html>
+  if (url === '/') {
+    const latestMessage = fs.readFileSync('message.txt', 'utf8').trim();
+
+    res.write('<html>');
+    res.write('<head><title>Enter Message</title></head>');
+    res.write('<body>');
+    res.write(`<p>${latestMessage}</p>`);
+    res.write('<form action="/message" method="POST"><input type="text" name="message"><button type="submit">Submit</button></form>');
+    res.write('</body>');
+    res.write('</html>');
+    return res.end();
+  }
+
+  if (url === '/message' && method === 'POST') {
+    const body = [];
+
+    req.on('data', (chunk) => {
+      body.push(chunk);
+    });
+
+    return req.on('end', () => {
+      const parsedBody = Buffer.concat(body).toString();
+      const newMessage = parsedBody.split('=')[1];
+
+      fs.writeFileSync('message.txt', newMessage);
+
+      res.statusCode = 302;
+      res.setHeader('Location', '/');
+      return res.end();
+    });
+  }
+
+  res.setHeader('Content-Type', 'text/html');
+  res.write('<html>');
+  res.write('<head><title>My First Page</title></head>');
+  res.write('<body><h1>Hello, this is my first Node.js server!</h1></body>');
+  res.write('</html>');
+  res.end();
+});
+
+server.listen(3000, () => {
+  console.log('Server is running on port 3000');
+});
